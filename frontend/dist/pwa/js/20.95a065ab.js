@@ -1,0 +1,1 @@
+(window["webpackJsonp"]=window["webpackJsonp"]||[]).push([[20],{"5fd2":function(e,n,t){"use strict";t.r(n);var a=function(){var e=this,n=e._self._c;return n("div",[n("router-view")],1)},o=[],r={name:"IndexChatFlow"},u=r,c=t("2877"),i=Object(c["a"])(u,a,o,!1,null,"e31acd58",null);n["default"]=i.exports}}]);
