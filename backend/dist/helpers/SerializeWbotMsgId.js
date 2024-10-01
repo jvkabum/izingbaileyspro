@@ -1,8 +1,0 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const SerializeWbotMsgId = (ticket, message) => {
-    const serializedMsgId = `${message.fromMe}_${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us_${message.messageId}`;
-    return serializedMsgId;
-};
-exports.default = SerializeWbotMsgId;
-//# sourceMappingURL=SerializeWbotMsgId.js.map
