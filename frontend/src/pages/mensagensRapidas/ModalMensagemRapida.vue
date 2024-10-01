@@ -71,6 +71,18 @@
             />
           </div>
         </div>
+
+        <!-- Uploader de Arquivos -->
+        <div class="row q-my-md">
+          <q-uploader
+            url=""
+            label="Anexar Arquivos"
+            @added="onFileAdded"
+            :auto-upload="false"
+            multiple
+            accept="image/*,video/*,audio/*,application/pdf"
+          />
+        </div>
       </q-card-section>
       <q-card-actions
         align="right"
@@ -96,8 +108,8 @@
 
 <script>
 import { VEmojiPicker } from 'v-emoji-picker'
-
 import { CriarMensagemRapida, AlterarMensagemRapida } from 'src/service/mensagensRapidas'
+
 export default {
   name: 'ModalMensagemRapida',
   components: { VEmojiPicker },
@@ -109,7 +121,7 @@ export default {
     mensagemRapidaEmEdicao: {
       type: Object,
       default: () => {
-        return { id: null, key: '', message: '' }
+        return { id: null, key: '', message: '', medias: [] }
       }
     }
   },
@@ -117,7 +129,8 @@ export default {
     return {
       mensagemRapida: {
         key: null,
-        message: null
+        message: null,
+        medias: [] // Para armazenar os arquivos anexados
       }
     }
   },
@@ -125,23 +138,26 @@ export default {
     onInsertSelectEmoji (emoji) {
       const self = this
       var tArea = this.$refs.inputEnvioMensagem
-      // get cursor's position:
       var startPos = tArea.selectionStart,
         endPos = tArea.selectionEnd,
         cursorPos = startPos,
         tmpStr = tArea.value
-      // filter:
+
       if (!emoji.data) {
         return
       }
-      // insert:
+
       self.txtContent = this.mensagemRapida.message
       self.txtContent = tmpStr.substring(0, startPos) + emoji.data + tmpStr.substring(endPos, tmpStr.length)
       this.mensagemRapida.message = self.txtContent
-      // move cursor:
+
       setTimeout(() => {
         tArea.selectionStart = tArea.selectionEnd = cursorPos + emoji.data.length
       }, 10)
+    },
+    // Para capturar os arquivos anexados
+    onFileAdded (files) {
+      this.mensagemRapida.medias = files
     },
     fecharModal () {
       this.$emit('update:mensagemRapidaEmEdicao', { id: null })
@@ -153,15 +169,26 @@ export default {
       } else {
         this.mensagemRapida = {
           key: null,
-          message: null
+          message: null,
+          medias: []
         }
       }
     },
     async handleMensagemRapida () {
+      const formData = new FormData()
+      formData.append('key', this.mensagemRapida.key)
+      formData.append('message', this.mensagemRapida.message)
+
+      if (this.mensagemRapida.medias) {
+        this.mensagemRapida.medias.forEach((file) => {
+          formData.append('medias', file)
+        })
+      }
+
       this.loading = true
       try {
         if (this.mensagemRapida.id) {
-          const { data } = await AlterarMensagemRapida(this.mensagemRapida)
+          const { data } = await AlterarMensagemRapida(this.mensagemRapida.id, formData)
           this.$emit('mensagemRapida:editada', { ...this.mensagemRapida, ...data })
           this.$q.notify({
             type: 'info',
@@ -176,7 +203,7 @@ export default {
             }]
           })
         } else {
-          const { data } = await CriarMensagemRapida(this.mensagemRapida)
+          const { data } = await CriarMensagemRapida(formData)
           this.$emit('mensagemRapida:criada', data)
           this.$q.notify({
             type: 'positive',
@@ -193,6 +220,10 @@ export default {
         this.fecharModal()
       } catch (error) {
         console.error(error)
+        this.$q.notify({
+          type: 'negative',
+          message: 'Erro ao salvar a mensagem.'
+        })
       }
       this.loading = false
     }
