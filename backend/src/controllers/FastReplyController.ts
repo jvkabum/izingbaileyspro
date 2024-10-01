@@ -16,10 +16,6 @@ interface FastReplyData {
   medias?: Express.Multer.File[];
 }
 
-export const store = async (req: Request, res: Response): Promise<Response> => {
-  // Log para verificar o que está sendo enviado no corpo da requisição
-  console.log(req.body);
-
 // Função para armazenar uma nova resposta rápida
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const { tenantId } = req.user;
