@@ -9,7 +9,8 @@
       :style="$q.screen.width < 500 ? 'width: 95vw' : 'min-width: 700px; max-width: 700px'"
       class="q-pa-lg"
     >
-      <div class="text-h6">{{ mensagemRapida.id ? 'Editar': 'Criar' }} Mensagem Rápida {{ mensagemRapida.id  ? `(ID: ${mensagemRapida.id})` : '' }}</div>
+      <div class="text-h6">{{ mensagemRapida.id ? 'Editar' : 'Criar' }} Mensagem Rápida {{ mensagemRapida.id ? `(ID: ${mensagemRapida.id})` : '' }}</div>
+      
       <q-card-section class="q-pa-none">
         <div class="row q-my-md">
           <div class="col">
@@ -26,25 +27,13 @@
             </p>
           </div>
         </div>
+        
         <div class="row items-center">
           <div class="col-xs-3 col-sm-2 col-md-1">
-            <q-btn
-              round
-              flat
-              class="q-ml-sm"
-            >
-              <q-icon
-                size="2em"
-                name="mdi-emoticon-happy-outline"
-              />
-              <q-tooltip>
-                Emoji
-              </q-tooltip>
-              <q-menu
-                anchor="top right"
-                self="bottom middle"
-                :offset="[5, 40]"
-              >
+            <q-btn round flat class="q-ml-sm">
+              <q-icon size="2em" name="mdi-emoticon-happy-outline" />
+              <q-tooltip>Emoji</q-tooltip>
+              <q-menu anchor="top right" self="bottom middle" :offset="[5, 40]">
                 <VEmojiPicker
                   style="width: 40vw"
                   :showSearch="false"
@@ -66,7 +55,7 @@
               autogrow
               dense
               outlined
-              @input="(v) => mensagemRapida.message = v.target.value"
+              @input="onInputMessage"
               :value="mensagemRapida.message"
             />
           </div>
@@ -84,10 +73,8 @@
           />
         </div>
       </q-card-section>
-      <q-card-actions
-        align="right"
-        class="q-mt-md"
-      >
+      
+      <q-card-actions align="right" class="q-mt-md">
         <q-btn
           rounded
           label="Cancelar"
@@ -131,90 +118,92 @@ export default {
         key: null,
         message: null,
         medias: [] // Para armazenar os arquivos anexados
-      }
+      },
+      loading: false
     }
   },
   methods: {
     onInsertSelectEmoji (emoji) {
-      const self = this
-      var tArea = this.$refs.inputEnvioMensagem
-      var startPos = tArea.selectionStart,
-        endPos = tArea.selectionEnd,
-        cursorPos = startPos,
-        tmpStr = tArea.value
+      const tArea = this.$refs.inputEnvioMensagem
+      const startPos = tArea.selectionStart
+      const endPos = tArea.selectionEnd
+      const tmpStr = this.mensagemRapida.message || ''
 
-      if (!emoji.data) {
-        return
-      }
+      if (!emoji.data) return
 
-      self.txtContent = this.mensagemRapida.message
-      self.txtContent = tmpStr.substring(0, startPos) + emoji.data + tmpStr.substring(endPos, tmpStr.length)
-      this.mensagemRapida.message = self.txtContent
+      this.mensagemRapida.message = tmpStr.substring(0, startPos) + emoji.data + tmpStr.substring(endPos)
 
-      setTimeout(() => {
-        tArea.selectionStart = tArea.selectionEnd = cursorPos + emoji.data.length
-      }, 10)
+      // Posiciona o cursor corretamente após inserir o emoji
+      this.$nextTick(() => {
+        tArea.selectionStart = tArea.selectionEnd = startPos + emoji.data.length
+      })
     },
-    // Para capturar os arquivos anexados
+    
+    onInputMessage (event) {
+      this.mensagemRapida.message = event.target.value
+    },
+
     onFileAdded (files) {
       this.mensagemRapida.medias = files
     },
-    fecharModal () {
-      this.$emit('update:mensagemRapidaEmEdicao', { id: null })
-      this.$emit('update:modalMensagemRapida', false)
-    },
+
     abrirModal () {
       if (this.mensagemRapidaEmEdicao.id) {
         this.mensagemRapida = { ...this.mensagemRapidaEmEdicao }
       } else {
-        this.mensagemRapida = {
-          key: null,
-          message: null,
-          medias: []
-        }
+        this.resetarMensagemRapida()
       }
     },
+
+    fecharModal () {
+      this.resetarMensagemRapida()
+      this.$emit('update:mensagemRapidaEmEdicao', { id: null })
+      this.$emit('update:modalMensagemRapida', false)
+    },
+
+    resetarMensagemRapida () {
+      this.mensagemRapida = {
+        key: null,
+        message: null,
+        medias: []
+      }
+    },
+
     async handleMensagemRapida () {
+      if (!this.mensagemRapida.key || !this.mensagemRapida.message) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'A chave e a mensagem são obrigatórias.'
+        })
+        return
+      }
+
       const formData = new FormData()
       formData.append('key', this.mensagemRapida.key)
       formData.append('message', this.mensagemRapida.message)
 
-      if (this.mensagemRapida.medias) {
-        this.mensagemRapida.medias.forEach((file) => {
+      if (this.mensagemRapida.medias.length) {
+        this.mensagemRapida.medias.forEach(file => {
           formData.append('medias', file)
         })
       }
 
       this.loading = true
       try {
+        let data
         if (this.mensagemRapida.id) {
-          const { data } = await AlterarMensagemRapida(this.mensagemRapida.id, formData)
+          ({ data } = await AlterarMensagemRapida(this.mensagemRapida.id, formData))
           this.$emit('mensagemRapida:editada', { ...this.mensagemRapida, ...data })
           this.$q.notify({
             type: 'info',
-            progress: true,
-            position: 'top',
-            textColor: 'black',
-            message: 'Mensagem Rápida editada!',
-            actions: [{
-              icon: 'close',
-              round: true,
-              color: 'white'
-            }]
+            message: 'Mensagem Rápida editada!'
           })
         } else {
-          const { data } = await CriarMensagemRapida(formData)
+          ({ data } = await CriarMensagemRapida(formData))
           this.$emit('mensagemRapida:criada', data)
           this.$q.notify({
             type: 'positive',
-            progress: true,
-            position: 'top',
-            message: 'Mensagem rápida criada!',
-            actions: [{
-              icon: 'close',
-              round: true,
-              color: 'white'
-            }]
+            message: 'Mensagem rápida criada!'
           })
         }
         this.fecharModal()
@@ -232,4 +221,23 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.textarea-container {
+  min-height: 15vh;
+  max-height: 15vh;
+}
+
+.q-uploader {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.q-card {
+  width: 95vw;
+  max-width: 700px;
+}
+
+.q-btn {
+  margin-right: 10px;
+}
 </style>
+

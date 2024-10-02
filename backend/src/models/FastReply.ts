@@ -62,6 +62,8 @@ class FastReply extends Model<FastReply> {
   // Data da última atualização da resposta rápida
   @UpdatedAt
   updatedAt: Date;
+  
+  tableName: "FastReply";
 }
 
 // Exporta o modelo para uso em outros arquivos
